@@ -27,16 +27,16 @@ If you ask a question the system will try to proof it with the contents of the k
 
 There are also 2 demos you can run with the following commands demo1 and demo2:
 
-demo1 demonstrates how using this system can improve upon pure language models.
+**demo1** demonstrates how using this system can improve upon pure language models.
 by generating a simple statment + query that the llm gets wrong.
 
-demo2 demonstrates how we can use this system to understand the results of our query.
+**demo2** demonstrates how we can use this system to understand the results of our query.
 by generating a slightly more complex scenario and showing how the results of the query contain a full proof trace.
 
 Other commands:
 
-debug: enables debug mode which prints out more information
-llm: enables llm mode which also queries the llm with the same text for comparison
-inference: after adding new knowledge we generate inferences by forward chaining, this shows the results of the inference
-exit: exits the program
+**debug**: enables debug mode which prints out more information  
+**llm**: enables llm mode which also queries the llm with the same text for comparison  
+**inference**: after adding new knowledge we generate inferences by forward chaining, this shows the results of the inference  
+**exit**: exits the program  
 
