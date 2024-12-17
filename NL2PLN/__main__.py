@@ -57,7 +57,7 @@ class KBShell(cmd.Cmd):
         riddle = "The surgeon who is the boys father says: 'I can't operate on him he is my son'"
         print(f"\nProcessing riddle statement:\n {riddle}")
         self.process_input(riddle)
-        
+
         # Then process the follow-up question
         question = "Who is the surgeon to the son?"
         print(f"\nProcessing follow-up question:\n {question}")
@@ -69,7 +69,7 @@ class KBShell(cmd.Cmd):
     def do_demo2(self, arg):
         """Run a simple proof example with family relationships"""
         print("\n=== Family Relationship Proof Example ===")
-        
+
         # Add basic facts
         print("\nAdding facts:")
         facts = [
@@ -82,7 +82,7 @@ class KBShell(cmd.Cmd):
         for fact in facts:
             print(f"\nProcessing: {fact}")
             self.process_input(fact)
-        
+
         # Ask about the relationship
         question = "Who is John to Bob?"
         print(f"\nQuerying: {question}")
@@ -92,15 +92,15 @@ class KBShell(cmd.Cmd):
         # Get examples from both RAG databases
         base_similar = self.rag.search_similar(input_text, limit=3)
         query_similar = self.query_rag.search_similar(input_text, limit=2)
-        
+
         # Combine results
         similar = base_similar + query_similar
-        
+
         return [
             f"Sentence: {item['sentence']}\n"
             f"From Context:\n{'\n'.join(item.get('from_context', []))}\n"
             f"Type Definitions:\n{'\n'.join(item.get('type_definitions', []))}\n"
-            f"Statements:\n{'\n'.join(item.get('statements', []))}" 
+            f"Statements:\n{'\n'.join(item.get('statements', []))}"
             for item in similar if 'sentence' in item
         ]
 
@@ -112,10 +112,10 @@ class KBShell(cmd.Cmd):
             messages.append({"role": "user", "content": msg["user"]})
             if msg.get("assistant"):
                 messages.append({"role": "assistant", "content": msg["assistant"]})
-        
+
         # Add current input
         messages.append({"role": "user", "content": user_input})
-        
+
         # Get LLM response
         response = create_openai_completion("",messages) #System message is empty
         return response
@@ -127,7 +127,7 @@ class KBShell(cmd.Cmd):
             print("\n=== LLM Response ===")
             llm_response = self.get_llm_response(user_input)
             print(llm_response)
-        
+
             # Update conversation history
             self.conversation_history.append({
                 "user": user_input,
@@ -146,7 +146,7 @@ class KBShell(cmd.Cmd):
         if self.debug:
             print("\nConverted PLN data:")
             print(json.dumps(pln_data, indent=2))
-        
+
         if pln_data == "Performative":
             print("This is a performative statement, not a query or statement.")
             return
@@ -167,11 +167,11 @@ class KBShell(cmd.Cmd):
                 result = self.metta_handler.add_atom_and_run_fc(statement)
                 if result:
                     fc_results.extend(result)
-            
+
             if self.debug: print(f"FC results: {fc_results}")
 
             if self.inference:
-                if fc_results
+                if fc_results:
                     print("\nInferred results:")
                     for result in fc_results:
                         english = convert_to_english(result, "", similar_examples)
@@ -203,7 +203,7 @@ def main():
         collection_name = os.path.splitext(os.path.splitext(os.path.basename(args.kb_file))[0])[0]
     else:
         collection_name = "default"
-    
+
     KBShell(args.kb_file, f"{collection_name}_pln").cmdloop()
 
 if __name__ == "__main__":
