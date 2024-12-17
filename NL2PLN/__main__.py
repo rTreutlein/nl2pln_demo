@@ -1,6 +1,6 @@
 import argparse
 import json
-from NL2PLN.utils.common import create_anthropic_completion, convert_logic_simple, convert_to_english
+from NL2PLN.utils.common import create_completion, set_model_provider, convert_logic_simple, convert_to_english
 from NL2PLN.utils.prompts import nl2pln, pln2nl
 from NL2PLN.metta.metta_handler import MeTTaHandler
 from NL2PLN.utils.ragclass import RAG
@@ -50,6 +50,15 @@ class KBShell(cmd.Cmd):
         """Toggle debug mode"""
         self.llm = not self.llm
         print(f"LLM mode: {'on' if self.llm else 'off'}")
+
+    def do_model_provider(self, arg):
+        """Set the model provider to either anthropic or openai"""
+        if arg.lower() in ["anthropic", "openai"]:
+            set_model_provider(arg)
+            print(f"Model provider: {arg}")
+        else:
+            print(f"Model provider not recognized, defaulting to 'anthropic'")
+            set_model_provider("anthropic")
 
     def do_demo1(self, arg):
         """Run the surgeon riddle example"""
@@ -117,7 +126,7 @@ class KBShell(cmd.Cmd):
         messages.append({"role": "user", "content": user_input})
 
         # Get LLM response
-        response = create_anthropic_completion("",messages) #System message is empty
+        response = create_completion("", messages) # System message is empty
         return response
 
     def process_input(self, user_input: str):
