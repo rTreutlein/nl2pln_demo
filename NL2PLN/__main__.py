@@ -1,6 +1,6 @@
 import argparse
 import json
-from NL2PLN.utils.common import create_openai_completion, convert_logic_simple, convert_to_english
+from NL2PLN.utils.common import create_anthropic_completion, convert_logic_simple, convert_to_english
 from NL2PLN.utils.prompts import nl2pln, pln2nl
 from NL2PLN.metta.metta_handler import MeTTaHandler
 from NL2PLN.utils.ragclass import RAG
@@ -117,7 +117,7 @@ class KBShell(cmd.Cmd):
         messages.append({"role": "user", "content": user_input})
 
         # Get LLM response
-        response = create_openai_completion("",messages) #System message is empty
+        response = create_anthropic_completion("",messages) #System message is empty
         return response
 
     def process_input(self, user_input: str):
