@@ -145,16 +145,19 @@ def create_anthropic_completion(system_msg, user_msg, model: str = "claude-3-5-s
 def create_openai_completion(system_msg, user_msg, model: str = "gpt-4o") -> str:
     msgs = []
     if system_msg:
-        msgs = [{"role": "system", "content": system_msg[0]['text'] + backtick_reminder}] + user_msg
+        if model.startswith("o1"):
+            # o1 doesn't take any system message
+            msgs = [{"role": "user", "content": system_msg[0]["text"]}] + user_msg
+        else:
+            msgs = [{"role": "system", "content": system_msg[0]["text"]}] + user_msg
     else:
         msgs = user_msg
 
     completion = openai_client.chat.completions.create(
         model=model,
-        messages = msgs
+        messages=msgs
     )
     return completion.choices[0].message.content
-
 
 def convert_to_english(pln_text, user_input, similar_examples, previous_sentences=None):
     """
