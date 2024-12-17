@@ -51,13 +51,13 @@ class KBShell(cmd.Cmd):
         self.llm = not self.llm
         print(f"LLM mode: {'on' if self.llm else 'off'}")
 
-    def do_model_provider(self, arg):
+    def do_provider(self, arg):
         """Set the model provider to either anthropic or openai"""
         if arg.lower() in ["anthropic", "openai"]:
             set_model_provider(arg)
-            print(f"Model provider: {arg}")
+            print(f"Provider: {arg}")
         else:
-            print(f"Model provider not recognized, defaulting to 'anthropic'")
+            print(f"Provider not recognized, defaulting to 'anthropic'")
             set_model_provider("anthropic")
 
     def do_demo1(self, arg):
@@ -191,7 +191,7 @@ class KBShell(cmd.Cmd):
         if pln_data["questions"]:
             print("Processing as query (backward chaining)")
             metta_results = self.metta_handler.bc(pln_data["questions"][0])[0]
-            if self.debug: print("metta_results:" + str(metta_results))
+            if self.debug: print("metta_results: " + str(metta_results))
             for result in metta_results:
                 if result:
                     english = convert_to_english(result, user_input, similar_examples)
