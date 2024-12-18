@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 import anthropic
+import openai
 import os
 import re
 import time
@@ -8,35 +9,41 @@ import shutil
 from NL2PLN.utils.ragclass import RAG
 
 # Initialize Anthropic client
-client = anthropic.Anthropic(
+anthropic_client = anthropic.Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY"),
 )
+
+# Initialize OpenAI client
+openai_client = openai.OpenAI()
+
+model_provider = "anthropic"
+
 
 def parse_lisp_statement(lines: list[str]) -> list[str]:
     """Parse multi-line Lisp-like statements and clean up trailing content after final parenthesis"""
     result = []
     current_statement = None
-    
+
     for line in lines:
         line = line.strip()
         if not line or not line.startswith('('):
             continue
-            
+
         if current_statement is None:
             current_statement = line
         else:
             current_statement = current_statement + ' ' + line
-            
+
         if current_statement.count('(') <= current_statement.count(')'):
             # Find the last closing parenthesis and trim anything after it
             last_paren_idx = current_statement.rindex(')')
             current_statement = current_statement[:last_paren_idx + 1]
             result.append(current_statement)
             current_statement = None
-            
+
     if current_statement is not None:
         result.append(current_statement)
-        
+
     return result
 
 
@@ -49,17 +56,17 @@ def extract_logic(response: str) -> dict[str, list[str]] | str | None:
 
     if content.lower().startswith('performative'):
         return "Performative"
-    
+
     # Split into sections
     from_context = []
     type_definitions = []
     statements = []
     questions = []
-    
+
     # Parse the content looking for sections
     sections = content.split('\n')
     current_section = None
-    
+
     for line in sections:
         line = line.strip()
         if line.lower().startswith('from context:'):
@@ -74,7 +81,7 @@ def extract_logic(response: str) -> dict[str, list[str]] | str | None:
         elif line.lower().startswith('questions:'):
             current_section = 'questions'
             continue
-        
+
         if line:
             if current_section == 'from_context':
                 from_context.append(line)
@@ -84,16 +91,16 @@ def extract_logic(response: str) -> dict[str, list[str]] | str | None:
                 statements.append(line)
             elif current_section == 'questions':
                 questions.append(line)
-    
+
     if not statements and not questions:
         return None
-    
+
     # Parse all sections using the Lisp statement parser
     parsed_context = parse_lisp_statement(from_context)
     parsed_types = parse_lisp_statement(type_definitions)
     parsed_statements = parse_lisp_statement(statements)
     parsed_questions = parse_lisp_statement(questions)
-        
+
     return {
         "from_context": parsed_context,
         "type_definitions": parsed_types,
@@ -101,14 +108,24 @@ def extract_logic(response: str) -> dict[str, list[str]] | str | None:
         "questions": parsed_questions
     }
 
-def create_openai_completion(system_msg, user_msg, model: str = "claude-3-5-sonnet-20241022", max_retries: int = 3) -> str:
+def set_model_provider(new_provider):
+    global model_provider
+    model_provider = new_provider
+
+def create_completion(*args, **kwargs):
+    if model_provider == "anthropic":
+        return create_anthropic_completion(*args, **kwargs)
+    elif model_provider == "openai":
+        return create_openai_completion(*args, **kwargs)
+
+def create_anthropic_completion(system_msg, user_msg, model: str = "claude-3-5-sonnet-20241022", max_retries: int = 3) -> str:
     # Convert message format for Anthropic
     retry_count = 0
     base_delay = 1  # Start with 1 second delay
 
     while True:
         try:
-            response = client.beta.prompt_caching.messages.create(
+            response = anthropic_client.beta.prompt_caching.messages.create(
                 model=model,
                 max_tokens=1024,
                 system=system_msg,
@@ -125,23 +142,39 @@ def create_openai_completion(system_msg, user_msg, model: str = "claude-3-5-sonn
                 continue
             raise  # Re-raise the exception if we're out of retries or it's a different error
 
+def create_openai_completion(system_msg, user_msg, model: str = "gpt-4o") -> str:
+    msgs = []
+    if system_msg:
+        if model.startswith("o1"):
+            # o1 doesn't take any system message
+            msgs = [{"role": "user", "content": system_msg[0]["text"]}] + user_msg
+        else:
+            msgs = [{"role": "system", "content": system_msg[0]["text"]}] + user_msg
+    else:
+        msgs = user_msg
+
+    completion = openai_client.chat.completions.create(
+        model=model,
+        messages=msgs
+    )
+    return completion.choices[0].message.content
 
 def convert_to_english(pln_text, user_input, similar_examples, previous_sentences=None):
     """
     Convert PLN expressions to natural language English.
-    
+
     Args:
         pln_text: The PLN expression to convert
         similar_examples: List of similar examples
         previous_sentences: List of previous context sentences
-    
+
     Returns:
         str: The English translation of the PLN expression
     """
     from NL2PLN.utils.prompts import pln2nl
     system_msg, user_msg = pln2nl(pln_text, user_input, similar_examples, previous_sentences or [])
-    response = create_openai_completion(system_msg, user_msg)
-    
+    response = create_completion(system_msg, user_msg)
+
     # Extract the English text from between triple backticks
     import re
     match = re.search(r'```(.+?)```', response, re.DOTALL)
@@ -154,10 +187,10 @@ def convert_logic_simple(input_text, prompt_func, similar_examples, previous_sen
     Simplified version of convert_logic that doesn't include human validation.
     """
     system_msg, user_msg = prompt_func(input_text, similar_examples, previous_sentences or [])
-    txt = create_openai_completion(system_msg, user_msg)
-    
+    txt = create_completion(system_msg, user_msg)
+
     logic_data = extract_logic(txt)
     if logic_data is None:
         raise RuntimeError("No output from LLM")
-    
+
     return logic_data
